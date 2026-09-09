@@ -1,0 +1,8 @@
+{
+  "name": "Jeomseon.Unity.Ownership.Tests",
+  "rootNamespace": "Jeomseon.Unity.Ownership.Tests",
+  "references": ["Jeomseon.Unity.Ownership"],
+  "includePlatforms": ["Editor"],
+  "optionalUnityReferences": ["TestAssemblies"],
+  "autoReferenced": false
+}

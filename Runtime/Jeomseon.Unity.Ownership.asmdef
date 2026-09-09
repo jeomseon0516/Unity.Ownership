@@ -1,0 +1,7 @@
+{
+  "name": "Jeomseon.Unity.Ownership",
+  "rootNamespace": "Jeomseon.Unity.Ownership",
+  "references": [],
+  "autoReferenced": true,
+  "noEngineReferences": false
+}
