@@ -1,0 +1,7 @@
+{
+  "name": "Jeomseon.Unity.Ownership.Samples.BasicUsage",
+  "rootNamespace": "Jeomseon.Unity.Ownership.Samples.BasicUsage",
+  "references": ["Jeomseon.Unity.Ownership"],
+  "autoReferenced": false,
+  "noEngineReferences": false
+}
