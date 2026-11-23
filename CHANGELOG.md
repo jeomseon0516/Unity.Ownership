@@ -1,5 +1,9 @@
 # 변경 기록
 
+## [0.1.1] - Unreleased
+
+- Basic Usage 샘플이 생성된 멤버 이름과 맞지 않아 컴파일되지 않던 문제를 수정했습니다.
+
 ## [0.1.0] - Unreleased
 
 - 도메인 중립 ownership handle, 교체 가능한 slot과 GameObject 수명 host를 추가했습니다.

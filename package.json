@@ -1,6 +1,6 @@
 {
   "name": "com.jeomseon.unity.ownership",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "displayName": "Jeomseon Unity Ownership",
   "description": "Domain-neutral ownership handles, replaceable slots, and Unity lifetime hosting.",
   "unity": "6000.6",
