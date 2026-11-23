@@ -10,7 +10,7 @@ namespace Jeomseon.Unity.Ownership.Samples.BasicUsage
 
     public partial class OwnershipBasicUsageSample : MonoBehaviour
     {
-        [ManagedDemoResource] private DemoHandle _statusHandle;
+        [ManagedDemoResource] private DemoHandle _status;
         private int _created;
         private int _disposed;
 
