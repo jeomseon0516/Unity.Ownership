@@ -1,5 +1,100 @@
 # Jeomseon Unity Ownership
 
+한국어 | [English](README.en.md)
+
+획득 완료된 리소스의 교체·소유권 양도·해제를 통일합니다. Source Generator가 partial Component의 필드에 안전한 접근 경로를 생성합니다.
+
+## 빠르게 시작하기
+
+도메인 Managed Attribute 선언 → 생성 Set 메서드로 handle 전달 → getter로 borrow → 필요시 Take로 양도 또는 domain Retain → 교체/owner GameObject 파괴 시 해제.
+
+전체 샘플 코드: [OwnershipBasicUsageSample.cs](Samples~/BasicUsage/OwnershipBasicUsageSample.cs).
+
+```csharp
+using System;
+using UnityEngine;
+
+namespace Jeomseon.Unity.Ownership.Samples.BasicUsage
+{
+    [AttributeUsage(AttributeTargets.Field)]
+    internal sealed class ManagedDemoResourceAttribute : ManagedResourceAttribute
+    {
+    }
+
+    public partial class OwnershipBasicUsageSample : MonoBehaviour
+    {
+        [ManagedDemoResource] private DemoHandle _statusHandle;
+        private int _created;
+        private int _disposed;
+
+        private void Start() => Replace();
+
+        private void Replace() => SetStatus(new DemoHandle($"Resource #{++_created}", () => _disposed++));
+
+        private void Clear() => SetStatus(null);
+
+        private void OnGUI()
+        {
+            GUILayout.BeginArea(new Rect(20f, 20f, 460f, 180f), GUI.skin.box);
+            GUILayout.Label("Ownership Source Generator — Basic Usage");
+            GUILayout.Label($"Borrowed value: {Status ?? "<none>"}");
+            GUILayout.Label($"Created: {_created}   Disposed: {_disposed}");
+            if (GUILayout.Button("Replace owned resource")) Replace();
+            if (GUILayout.Button("Clear owned resource")) Clear();
+            GUILayout.Label("Stop Play Mode or delete this object to test host disposal.");
+            GUILayout.EndArea();
+        }
+
+        public sealed class DemoHandle : IOwnershipHandle<string>
+        {
+            private Action _release;
+            public DemoHandle(string value, Action release) { Value = value; _release = release; }
+            public string Value { get; }
+            public bool IsValid => _release != null;
+            public void Dispose() { var release = _release; _release = null; release?.Invoke(); }
+        }
+    }
+}
+```
+
+## 계약과 주의사항
+
+기존 OnDestroy는 수정하지 않습니다. Host는 Component 개별 파괴가 아닌 같은 GameObject 수명을 따릅니다. Analyzer는 지원하는 구문·소스 범위의 진단이며 전체 프로그램의 안전성 증명이 아닙니다.
+
+## 요구 사항
+
+- Unity `6000.6.0f1`
+- 패키지: `com.jeomseon.unity.ownership` `0.1.0`
+
+## 설치
+
+프로젝트 `Packages/manifest.json`의 기존 dependencies와 registry를 유지하면서 다음 항목을 병합합니다.
+
+```json
+{
+  "scopedRegistries": [
+    {
+      "name": "OpenUPM",
+      "url": "https://package.openupm.com",
+      "scopes": [
+        "com.jeomseon"
+      ]
+    }
+  ],
+  "dependencies": {
+    "com.jeomseon.unity.ownership": "0.1.0"
+  }
+}
+```
+
+또는 Package Manager의 **Install package from git URL**을 사용합니다:
+
+```text
+https://github.com/jeomseon0516/Unity.Ownership.git#v0.1.0
+```
+
+## API 사용과 상세 설명
+
 Addressables와 GameObject Pooling처럼 획득 방식이 다른 리소스의 **교체·양도·해제** 수명을 통일하는
 도메인 중립 계약입니다.
 
@@ -51,3 +146,25 @@ private void InspectNow([DoesNotCapture] Sprite sprite)
     Justification = "호출자가 이 owner와 같은 수명에 묶여 있습니다.")]
 public Sprite BorrowPortrait() => Portrait;
 ```
+
+## 샘플 실행
+
+**Package Manager > Samples**에서 예제를 Import합니다. 포함된 Scene 또는 Editor 도구를 열고 필요한 Setup 메뉴를 먼저 실행합니다.
+
+- [Basic Usage](Samples~/BasicUsage/README.md)
+  - [OwnershipBasicUsage](Samples~/BasicUsage/OwnershipBasicUsage.unity)
+
+## 테스트
+
+[테스트 코드](Tests)
+
+manifest의 `testables`에 패키지 ID를 추가하고 Unity Test Runner의 관련 EditMode/PlayMode 어셈블리를 실행합니다.
+
+## 추가 문서
+
+[전체 코드 지도와 패키지 구성](Documentation~/Overview.md)
+- [Changelog](CHANGELOG.md)
+
+## 라이선스
+
+[License](LICENSE.md)

@@ -1,5 +1,100 @@
 # Jeomseon Unity Ownership
 
+[한국어](README.md) | English
+
+Unifies replacement, ownership transfer, and release of acquired resources. A Source Generator creates safe access paths for fields in partial Components.
+
+## Quick start
+
+Declare a domain Managed attribute, pass a handle to generated Set, borrow through the getter, transfer through Take or domain Retain, then release on replacement/owner GameObject destruction.
+
+Complete sample: [OwnershipBasicUsageSample.cs](Samples~/BasicUsage/OwnershipBasicUsageSample.cs).
+
+```csharp
+using System;
+using UnityEngine;
+
+namespace Jeomseon.Unity.Ownership.Samples.BasicUsage
+{
+    [AttributeUsage(AttributeTargets.Field)]
+    internal sealed class ManagedDemoResourceAttribute : ManagedResourceAttribute
+    {
+    }
+
+    public partial class OwnershipBasicUsageSample : MonoBehaviour
+    {
+        [ManagedDemoResource] private DemoHandle _statusHandle;
+        private int _created;
+        private int _disposed;
+
+        private void Start() => Replace();
+
+        private void Replace() => SetStatus(new DemoHandle($"Resource #{++_created}", () => _disposed++));
+
+        private void Clear() => SetStatus(null);
+
+        private void OnGUI()
+        {
+            GUILayout.BeginArea(new Rect(20f, 20f, 460f, 180f), GUI.skin.box);
+            GUILayout.Label("Ownership Source Generator — Basic Usage");
+            GUILayout.Label($"Borrowed value: {Status ?? "<none>"}");
+            GUILayout.Label($"Created: {_created}   Disposed: {_disposed}");
+            if (GUILayout.Button("Replace owned resource")) Replace();
+            if (GUILayout.Button("Clear owned resource")) Clear();
+            GUILayout.Label("Stop Play Mode or delete this object to test host disposal.");
+            GUILayout.EndArea();
+        }
+
+        public sealed class DemoHandle : IOwnershipHandle<string>
+        {
+            private Action _release;
+            public DemoHandle(string value, Action release) { Value = value; _release = release; }
+            public string Value { get; }
+            public bool IsValid => _release != null;
+            public void Dispose() { var release = _release; _release = null; release?.Invoke(); }
+        }
+    }
+}
+```
+
+## Contracts and limitations
+
+Existing OnDestroy is not rewritten. The host follows the shared GameObject lifetime, not individual Component destruction. Analyzer diagnostics cover supported syntax/source and are not whole-program proofs.
+
+## Requirements
+
+- Unity `6000.6.0f1`
+- Package: `com.jeomseon.unity.ownership` `0.1.0`
+
+## Installation
+
+Merge this into your project's `Packages/manifest.json`; preserve existing dependencies and registries.
+
+```json
+{
+  "scopedRegistries": [
+    {
+      "name": "OpenUPM",
+      "url": "https://package.openupm.com",
+      "scopes": [
+        "com.jeomseon"
+      ]
+    }
+  ],
+  "dependencies": {
+    "com.jeomseon.unity.ownership": "0.1.0"
+  }
+}
+```
+
+Or use **Install package from git URL** in Package Manager:
+
+```text
+https://github.com/jeomseon0516/Unity.Ownership.git#v0.1.0
+```
+
+## API usage and details
+
 This package provides domain-neutral ownership handles, replaceable slots, and Unity lifetime hosting.
 
 - `IOwnershipHandle<T>` owns an acquired value and one release responsibility.
@@ -28,3 +123,25 @@ Generated `Take{Name}()` methods transfer ownership without disposal. Addressabl
 For fields that accept multiple handle kinds, a mismatched take fails before ownership is detached.
 Intentional exceptions use the standard `SuppressMessage` attribute with a justification. The package does not
 add a no-op unsafe-borrow wrapper.
+
+## Samples
+
+Import the desired entry from **Package Manager > Samples**. Use the included Scene/Editor tool and complete its Setup step first, if required.
+
+- [Basic Usage](Samples~/BasicUsage/README.md)
+  - [OwnershipBasicUsage](Samples~/BasicUsage/OwnershipBasicUsage.unity)
+
+## Tests
+
+[Test sources](Tests)
+
+Add the package ID to manifest `testables`, then execute its relevant EditMode/PlayMode assemblies in Unity Test Runner.
+
+## Further reading
+
+[Complete source map and package metadata](Documentation~/Overview.en.md)
+- [Changelog](CHANGELOG.md)
+
+## License
+
+[License](LICENSE.md)
