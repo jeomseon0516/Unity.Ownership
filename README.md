@@ -11,6 +11,10 @@ Addressables와 GameObject Pooling처럼 획득 방식이 다른 리소스의 **
 - Analyzer: `partial` 누락(`JMO1010`), 잘못된 handle(`JMO1011`), 지원하지 않는 owner(`JMO1012`)를
   컴파일 오류로 진단합니다. borrowed 선언(`JMO1020`), persistent 저장(`JMO1021`), 반환(`JMO1022`),
   collection 저장·closure capture(`JMO1023`)를 경고합니다.
+- 생성 이름은 필드의 모든 앞쪽 밑줄을 제거하고 첫 글자를 대문자로 바꿉니다. 따라서 `_status`,
+  `status`, `__status`는 모두 `Status`가 됩니다. 관리 필드끼리 같은 이름으로 정규화되거나 사용자가
+  작성한 멤버가 생성 이름을 이미 사용하면 `JMO1014` 오류를 보고하고, 중복 멤버 컴파일 오류가
+  연쇄되지 않도록 충돌 필드의 코드는 생성하지 않습니다.
   로컬 borrowed 값이 `await` 경계를 넘어 사용되면 `JMO1024`로 경고합니다.
   서로 다른 조건 분기의 대입과 조건식·null 병합식도 borrowed 출처로 추적합니다.
   반복문과 예외 분기의 가능한 대입도 합치며, `await` 이후 확정 재대입은 이전 borrow 경고를 제거합니다.
