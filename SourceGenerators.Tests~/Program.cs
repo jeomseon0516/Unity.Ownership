@@ -51,6 +51,10 @@ public partial class ExistingMemberCollisionOwner : UnityEngine.MonoBehaviour
 {
     [Jeomseon.Unity.Addressables.Ownership.ManagedAsset] private UnityEngine.Sprite _status;
     public UnityEngine.Sprite Status => null;
+}
+public partial class SelfNamedCollisionOwner : UnityEngine.MonoBehaviour
+{
+    [Jeomseon.Unity.Addressables.Ownership.ManagedAsset] private UnityEngine.Sprite Status;
 }";
 
 var syntaxTree = CSharpSyntaxTree.ParseText(source);
@@ -82,9 +86,9 @@ Require("JMO1023", 2);
 Require("JMO1024", 2);
 Require("JMO1025", 1);
 Require("JMO1013", 3);
-Require("JMO1014", 4);
+Require("JMO1014", 5);
 Require("JMO1011", 1);
-Require("JMO1020", 6);
+Require("JMO1020", 7);
 if (diagnostics.Any(diagnostic => diagnostic.Id == "JMO1021" && diagnostic.GetMessage().Contains("local")))
     throw new InvalidOperationException("A local borrowed value was incorrectly classified as a persistent escape.");
 var collisionMessages = diagnostics.Where(diagnostic => diagnostic.Id == "JMO1014").Select(diagnostic => diagnostic.GetMessage()).ToArray();
@@ -93,6 +97,7 @@ if (collisionMessages.Any(message => !message.Contains("'Status'")))
 RequireCollisionField("'_status'", 2);
 RequireCollisionField("'status'", 1);
 RequireCollisionField("'__status'", 1);
+RequireCollisionField("'Status'", 1);
 
 Console.WriteLine("Analyzer escape probes passed: " + string.Join(", ", diagnostics.Select(diagnostic => diagnostic.Id).OrderBy(id => id)));
 

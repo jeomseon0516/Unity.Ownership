@@ -492,7 +492,7 @@ namespace Jeomseon.Unity.Ownership.CodeGen
         {
             foreach (var name in GetGeneratedMemberNames(field))
             {
-                if (field.ContainingType.GetMembers(name).Any(member => !SymbolEqualityComparer.Default.Equals(member, field) && !IsGeneratedOwnershipMember(member)) ||
+                if (field.ContainingType.GetMembers(name).Any(member => !IsGeneratedOwnershipMember(member)) ||
                     managedFields.Any(other => !SymbolEqualityComparer.Default.Equals(other, field) && GetGeneratedMemberNames(other).Contains(name)))
                 {
                     memberName = name;
