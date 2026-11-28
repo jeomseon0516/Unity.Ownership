@@ -27,6 +27,8 @@ namespace Jeomseon.Unity.Ownership.CodeGen
                 var type = group.Key;
                 if (!OwnershipSymbols.IsSupportedOwner(type) || !OwnershipSymbols.IsPartial(type)) continue;
                 var validFields = group.Where(info => info.IsValid).ToArray();
+                var validSymbols = validFields.Select(info => info.Field).ToArray();
+                validFields = validFields.Where(info => !OwnershipSymbols.TryGetGeneratedMemberCollision(info.Field, validSymbols, out _)).ToArray();
                 if (validFields.Length > 0) context.AddSource(GetHintName(type), Generate(type, validFields));
             }
         }
@@ -191,13 +193,14 @@ namespace Jeomseon.Unity.Ownership.CodeGen
         private static readonly DiagnosticDescriptor TypeRule = new DiagnosticDescriptor("JMO1011", "Managed resource field type is unsupported", "Field '{0}' has a type that is not supported by its managed resource attribute", "Ownership", DiagnosticSeverity.Error, true);
         private static readonly DiagnosticDescriptor OwnerRule = new DiagnosticDescriptor("JMO1012", "Managed resource owner must be a Unity component", "Type '{0}' must derive from UnityEngine.Component for automatic lifetime hosting", "Ownership", DiagnosticSeverity.Error, true);
         private static readonly DiagnosticDescriptor DoesNotCaptureRule = new DiagnosticDescriptor("JMO1013", "DoesNotCapture contract is violated", "Parameter '{0}' is marked DoesNotCapture but is stored, returned, or captured", "Ownership", DiagnosticSeverity.Error, true);
+        private static readonly DiagnosticDescriptor GeneratedMemberCollisionRule = new DiagnosticDescriptor("JMO1014", "Generated managed resource member name collides", "Field '{0}' generates member name '{1}', which conflicts with another member on type '{2}'", "Ownership", DiagnosticSeverity.Error, true);
         private static readonly DiagnosticDescriptor BorrowedRule = new DiagnosticDescriptor("JMO1020", "Generated managed resource value is borrowed", "Field '{0}' is released automatically on replacement or owner destruction; generated value '{1}' is borrowed and must not outlive its owner", "Ownership", DiagnosticSeverity.Warning, true);
         private static readonly DiagnosticDescriptor PersistentEscapeRule = new DiagnosticDescriptor("JMO1021", "Borrowed managed resource escapes to persistent storage", "Borrowed value '{0}' is stored in field or property '{1}'; retain or transfer ownership before storing it", "Ownership", DiagnosticSeverity.Warning, true);
         private static readonly DiagnosticDescriptor ReturnEscapeRule = new DiagnosticDescriptor("JMO1022", "Borrowed managed resource escapes through return", "Borrowed value '{0}' is returned from this method; retain or transfer ownership before returning it", "Ownership", DiagnosticSeverity.Warning, true);
         private static readonly DiagnosticDescriptor CaptureEscapeRule = new DiagnosticDescriptor("JMO1023", "Borrowed managed resource may outlive its owner", "Borrowed value '{0}' is captured or stored in a persistent collection; retain or transfer ownership first", "Ownership", DiagnosticSeverity.Warning, true);
         private static readonly DiagnosticDescriptor AwaitEscapeRule = new DiagnosticDescriptor("JMO1024", "Borrowed managed resource crosses an await boundary", "Borrowed local '{0}' is used after await; retain or transfer ownership before awaiting", "Ownership", DiagnosticSeverity.Warning, true);
         private static readonly DiagnosticDescriptor CallEscapeRule = new DiagnosticDescriptor("JMO1025", "Borrowed managed resource is passed to a capturing parameter", "Borrowed value '{0}' is passed to parameter '{1}', which may store or return it; retain or transfer ownership first", "Ownership", DiagnosticSeverity.Warning, true);
-        public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => ImmutableArray.Create(PartialRule, TypeRule, OwnerRule, DoesNotCaptureRule, BorrowedRule, PersistentEscapeRule, ReturnEscapeRule, CaptureEscapeRule, AwaitEscapeRule, CallEscapeRule);
+        public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => ImmutableArray.Create(PartialRule, TypeRule, OwnerRule, DoesNotCaptureRule, GeneratedMemberCollisionRule, BorrowedRule, PersistentEscapeRule, ReturnEscapeRule, CaptureEscapeRule, AwaitEscapeRule, CallEscapeRule);
         public override void Initialize(AnalysisContext context)
         {
             context.ConfigureGeneratedCodeAnalysis(GeneratedCodeAnalysisFlags.None);
@@ -229,6 +232,13 @@ namespace Jeomseon.Unity.Ownership.CodeGen
             if (!partial) context.ReportDiagnostic(Diagnostic.Create(PartialRule, location, field.ContainingType.Name));
             if (!valid) context.ReportDiagnostic(Diagnostic.Create(TypeRule, location, field.Name));
             if (!owner) context.ReportDiagnostic(Diagnostic.Create(OwnerRule, location, field.ContainingType.Name));
+            if (partial && valid && owner)
+            {
+                var managedFields = field.ContainingType.GetMembers().OfType<IFieldSymbol>()
+                    .Where(candidate => OwnershipSymbols.GetManagedKind(candidate) != ManagedKind.None).ToArray();
+                if (OwnershipSymbols.TryGetGeneratedMemberCollision(field, managedFields, out var memberName))
+                    context.ReportDiagnostic(Diagnostic.Create(GeneratedMemberCollisionRule, location, field.Name, memberName, field.ContainingType.Name));
+            }
             if (partial && valid && owner) context.ReportDiagnostic(Diagnostic.Create(BorrowedRule, location, field.Name, OwnershipSymbols.GetPropertyName(field.Name)));
         }
 
@@ -477,6 +487,48 @@ namespace Jeomseon.Unity.Ownership.CodeGen
         {
             var name = fieldName.TrimStart('_');
             return name.Length == 0 ? "Resource" : char.ToUpperInvariant(name[0]) + name.Substring(1);
+        }
+        public static bool TryGetGeneratedMemberCollision(IFieldSymbol field, IReadOnlyList<IFieldSymbol> managedFields, out string memberName)
+        {
+            foreach (var name in GetGeneratedMemberNames(field))
+            {
+                if (field.ContainingType.GetMembers(name).Any(member => !SymbolEqualityComparer.Default.Equals(member, field) && !IsGeneratedOwnershipMember(member)) ||
+                    managedFields.Any(other => !SymbolEqualityComparer.Default.Equals(other, field) && GetGeneratedMemberNames(other).Contains(name)))
+                {
+                    memberName = name;
+                    return true;
+                }
+            }
+            memberName = null;
+            return false;
+        }
+        private static bool IsGeneratedOwnershipMember(ISymbol member) => member.DeclaringSyntaxReferences.Any(reference =>
+            reference.SyntaxTree.FilePath.EndsWith(".Ownership.g.cs", StringComparison.Ordinal));
+        private static IEnumerable<string> GetGeneratedMemberNames(IFieldSymbol field)
+        {
+            var property = GetPropertyName(field.Name);
+            var suffix = field.Name.TrimStart('_');
+            yield return property;
+            yield return "Set" + property;
+            yield return "Clear" + property;
+            yield return "Take" + property;
+            yield return "__ownershipRegistration_" + suffix;
+            var kind = GetManagedKind(field);
+            if (kind == ManagedKind.GenericHandle) yield break;
+            yield return "__ownershipResource_" + suffix;
+            yield return "__Exchange" + property;
+            yield return "__Take" + property;
+            if (kind == ManagedKind.AddressableAsset)
+            {
+                yield return "Retain" + property;
+                if (IsType(field.Type, "UnityEngine.GameObject"))
+                {
+                    yield return "Take" + property + "AssetLease";
+                    yield return "Take" + property + "InstanceHandle";
+                }
+            }
+            else if (kind == ManagedKind.AddressableCollection)
+                yield return "Retain" + property;
         }
         public static bool IsPartial(INamedTypeSymbol type)
         {

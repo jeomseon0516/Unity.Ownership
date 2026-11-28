@@ -9,6 +9,10 @@ This package provides domain-neutral ownership handles, replaceable slots, and U
   marked with an attribute derived from `ManagedResourceAttribute`.
 - The analyzer reports missing `partial` declarations (`JMO1010`), invalid handle fields (`JMO1011`), and
   unsupported owners (`JMO1012`).
+- Generated names remove every leading underscore and uppercase the first remaining character. For example,
+  `_status`, `status`, and `__status` all normalize to `Status`. `JMO1014` reports an error when managed fields
+  normalize to the same generated member name or when a user-written member already uses that name. Conflicting
+  fields are not generated, preventing secondary duplicate-member compiler errors.
 - `JMO1020` warns at each valid managed-resource declaration that the generated value is borrowed and must not
   outlive its owner without transferring the handle.
 - `JMO1021`-`JMO1023` detect direct persistent assignment, return, persistent collection storage, and closure

@@ -40,6 +40,17 @@ public partial class Owner : UnityEngine.MonoBehaviour
     private UnityEngine.Sprite InvalidReturn([Jeomseon.Unity.Ownership.DoesNotCapture] UnityEngine.Sprite value) => value;
     private void InvalidClosure([Jeomseon.Unity.Ownership.DoesNotCapture] UnityEngine.Sprite value) { Action action = () => Use(value); }
     private void Use(UnityEngine.Sprite value) {}
+}
+public partial class NormalizedCollisionOwner : UnityEngine.MonoBehaviour
+{
+    [Jeomseon.Unity.Addressables.Ownership.ManagedAsset] private UnityEngine.Sprite _status;
+    [Jeomseon.Unity.Addressables.Ownership.ManagedAsset] private UnityEngine.Sprite status;
+    [Jeomseon.Unity.Addressables.Ownership.ManagedAsset] private UnityEngine.Sprite __status;
+}
+public partial class ExistingMemberCollisionOwner : UnityEngine.MonoBehaviour
+{
+    [Jeomseon.Unity.Addressables.Ownership.ManagedAsset] private UnityEngine.Sprite _status;
+    public UnityEngine.Sprite Status => null;
 }";
 
 var syntaxTree = CSharpSyntaxTree.ParseText(source);
@@ -71,10 +82,17 @@ Require("JMO1023", 2);
 Require("JMO1024", 2);
 Require("JMO1025", 1);
 Require("JMO1013", 3);
+Require("JMO1014", 4);
 Require("JMO1011", 1);
-Require("JMO1020", 2);
+Require("JMO1020", 6);
 if (diagnostics.Any(diagnostic => diagnostic.Id == "JMO1021" && diagnostic.GetMessage().Contains("local")))
     throw new InvalidOperationException("A local borrowed value was incorrectly classified as a persistent escape.");
+var collisionMessages = diagnostics.Where(diagnostic => diagnostic.Id == "JMO1014").Select(diagnostic => diagnostic.GetMessage()).ToArray();
+if (collisionMessages.Any(message => !message.Contains("'Status'")))
+    throw new InvalidOperationException("Collision diagnostics did not preserve normalized member naming.\n" + string.Join(Environment.NewLine, collisionMessages));
+RequireCollisionField("'_status'", 2);
+RequireCollisionField("'status'", 1);
+RequireCollisionField("'__status'", 1);
 
 Console.WriteLine("Analyzer escape probes passed: " + string.Join(", ", diagnostics.Select(diagnostic => diagnostic.Id).OrderBy(id => id)));
 
@@ -83,4 +101,11 @@ void Require(string id, int count)
     var actual = diagnostics.Count(diagnostic => diagnostic.Id == id);
     if (actual != count)
         throw new InvalidOperationException($"Expected {count} {id} diagnostic(s), but found {actual}.\n{string.Join(Environment.NewLine, diagnostics)}");
+}
+
+void RequireCollisionField(string fieldName, int count)
+{
+    var actual = collisionMessages.Count(message => message.Contains("Field " + fieldName));
+    if (actual != count)
+        throw new InvalidOperationException($"Expected {count} JMO1014 diagnostic(s) for {fieldName}, but found {actual}.\n{string.Join(Environment.NewLine, collisionMessages)}");
 }
