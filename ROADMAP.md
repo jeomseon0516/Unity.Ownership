@@ -27,8 +27,9 @@
 - 기준: `8537a22509b8e24ec0a42679c21527fe965e000b`
 - 상태: `_status`, `status`, `__status` 정규화 충돌과 사용자 작성 `Status` 충돌을 `JMO1014`로
   결정적으로 진단하며, 충돌 필드는 생성에서 제외합니다.
-- 검증 대상 SHA: `fbb8ab1`. Roslyn 생성기/분석기 빌드(경고·오류 0)와 독립 진단 probe를
-  통과했습니다. Unity 6000.6.0f1 격리 TestProject에서 Ownership EditMode 5/5 통과,
+- 검증 대상 SHA: `13bda641c81fb222153ff6fac2f5a7fe34cfe57d`. Roslyn 생성기/분석기
+  빌드(경고·오류 0)와 독립 진단 probe를 통과했습니다. 대문자 필드 `Status`가 자기 이름의 생성
+  프로퍼티와 충돌하는 회귀도 포함합니다. Unity 6000.6.0f1 격리 TestProject에서 Ownership EditMode 5/5 통과,
   Ownership PlayMode는 등록 테스트 0건으로 종료 코드 0이었습니다. 전체 EditMode는 426개 중
   423개 통과, 2개 실패, 1개 skip이며 두 실패는 `-nographics` 환경의 EditorToolkit 창 그래픽 장치
   오류로 Ownership과 무관합니다. 수동 Play sample 검증은 실행하지 않았습니다.
